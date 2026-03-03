@@ -1,0 +1,235 @@
+---
+title: Discord integration
+description: Discord RPC integration API for MobaXterm
+---
+
+The Discord integration API enables Rich Presence functionality in MobaXterm by connecting to Discord's RPC system. This API handles initialization, presence updates, and lifecycle management.
+
+## Discord Application ID
+
+The application uses the Discord Application ID `1347921816777392244` for all RPC connections.
+
+## Core functions
+
+### Discord_Initialize()
+
+Initializes the Discord RPC connection with your application credentials and event handlers.
+
+<ParamField path="applicationId" type="const char*" required>
+  Your Discord Application ID. Use `"1347921816777392244"` for MobaXterm RPC.
+</ParamField>
+
+<ParamField path="handlers" type="DiscordEventHandlers*" required>
+  Pointer to event handlers structure containing callback functions.
+</ParamField>
+
+<ParamField path="autoRegister" type="int" required>
+  Set to `1` to automatically register the application with Discord.
+</ParamField>
+
+<ParamField path="optionalSteamId" type="const char*">
+  Optional Steam application ID. Pass `NULL` if not using Steam.
+</ParamField>
+
+```cpp complete.cpp
+DiscordEventHandlers handlers;
+memset(&handlers, 0, sizeof(handlers));
+handlers.ready = HandleDiscordReady;
+
+Discord_Initialize("1347921816777392244", &handlers, 1, NULL);
+```
+
+### Discord_UpdatePresence()
+
+Updates the current Discord Rich Presence with new activity information.
+
+<ParamField path="presence" type="const DiscordRichPresence*" required>
+  Pointer to a populated DiscordRichPresence structure.
+</ParamField>
+
+```cpp complete.cpp
+DiscordRichPresence presence;
+memset(&presence, 0, sizeof(presence));
+
+presence.state = "Terminal activa";
+presence.details = "Terminal";
+presence.startTimestamp = g_StartTimestamp;
+presence.largeImageKey = "moba-logo";
+presence.largeImageText = "MobaXterm";
+presence.smallImageKey = "terminal";
+presence.smallImageText = "Terminal";
+
+Discord_UpdatePresence(&presence);
+```
+
+### Discord_RunCallbacks()
+
+Processes pending Discord RPC callbacks. You must call this regularly to maintain the connection.
+
+```cpp complete.cpp
+while (g_Running) {
+    UpdateMobaState();
+    UpdateDiscordPresence();
+    Discord_RunCallbacks();
+    Sleep(500); // Update every 500ms
+}
+```
+
+<Note>
+Call `Discord_RunCallbacks()` at least every 500ms to ensure proper communication with Discord.
+</Note>
+
+### Discord_Shutdown()
+
+Cleans up and closes the Discord RPC connection.
+
+```cpp complete.cpp
+Discord_Shutdown();
+```
+
+## DiscordRichPresence structure
+
+The `DiscordRichPresence` structure defines what information appears in your Discord profile.
+
+<ResponseField name="state" type="const char*">
+  The user's current activity state (e.g., "Terminal activa", "Editando archivos").
+</ResponseField>
+
+<ResponseField name="details" type="const char*">
+  Additional details about the activity (e.g., "Bash", "Usando el editor de texto").
+</ResponseField>
+
+<ResponseField name="startTimestamp" type="int64_t">
+  Unix timestamp when the activity started. Used to display elapsed time.
+</ResponseField>
+
+<ResponseField name="largeImageKey" type="const char*">
+  Key for the large image asset uploaded to your Discord application.
+</ResponseField>
+
+<ResponseField name="largeImageText" type="const char*">
+  Tooltip text shown when hovering over the large image.
+</ResponseField>
+
+<ResponseField name="smallImageKey" type="const char*">
+  Key for the small image asset (displayed in bottom-right corner of large image).
+</ResponseField>
+
+<ResponseField name="smallImageText" type="const char*">
+  Tooltip text shown when hovering over the small image.
+</ResponseField>
+
+### Example presence configurations
+
+<Tabs>
+  <Tab title="Text editor active">
+    ```cpp
+    presence.state = "Editando archivos";
+    presence.details = "Usando el editor de texto";
+    presence.smallImageKey = "moba-logo";
+    presence.smallImageText = "Editor";
+    ```
+  </Tab>
+  <Tab title="Local bash terminal">
+    ```cpp
+    presence.state = "Terminal local";
+    presence.details = "Bash";
+    presence.smallImageKey = "bash";
+    presence.smallImageText = "Local Bash";
+    ```
+  </Tab>
+  <Tab title="Terminal active">
+    ```cpp
+    presence.state = "Terminal activa";
+    presence.details = "Terminal";
+    presence.smallImageKey = "terminal";
+    presence.smallImageText = "Terminal";
+    ```
+  </Tab>
+  <Tab title="Idle">
+    ```cpp
+    presence.state = "MobaXterm";
+    presence.details = "Inactivo";
+    ```
+  </Tab>
+</Tabs>
+
+## Event handlers
+
+### HandleDiscordReady()
+
+Callback function invoked when Discord RPC successfully connects.
+
+<ParamField path="request" type="const DiscordUser*" required>
+  Pointer to Discord user information.
+</ParamField>
+
+```cpp complete.cpp
+static void HandleDiscordReady(const DiscordUser* request) {
+    g_StartTimestamp = time(0);
+}
+```
+
+<Note>
+The `HandleDiscordReady` callback is the ideal place to initialize your start timestamp for elapsed time tracking.
+</Note>
+
+## Thread management
+
+The Discord RPC runs on a separate thread to avoid blocking the main application.
+
+```cpp complete.cpp
+DWORD WINAPI DiscordThread(LPVOID lpParam) {
+    DiscordEventHandlers handlers;
+    memset(&handlers, 0, sizeof(handlers));
+    handlers.ready = HandleDiscordReady;
+
+    Discord_Initialize("1347921816777392244", &handlers, 1, NULL);
+    g_StartTimestamp = time(0);
+
+    while (g_Running) {
+        UpdateMobaState();
+        UpdateDiscordPresence();
+        Discord_RunCallbacks();
+        Sleep(500);
+    }
+
+    Discord_Shutdown();
+    return 0;
+}
+```
+
+## Minimal implementation
+
+For a basic Discord presence without state tracking, use this minimal setup:
+
+```cpp silence.cpp
+static void HandleDiscordReady(const DiscordUser* request) {
+    // Empty callback
+}
+
+DWORD WINAPI DiscordThread(LPVOID lpParam) {
+    DiscordEventHandlers handlers;
+    memset(&handlers, 0, sizeof(handlers));
+    handlers.ready = HandleDiscordReady;
+
+    Discord_Initialize("1347921816777392244", &handlers, 1, NULL);
+
+    DiscordRichPresence presence;
+    memset(&presence, 0, sizeof(presence));
+    presence.state = "";
+    presence.details = "";
+    presence.startTimestamp = time(0);
+    presence.largeImageKey = "mobaxterm-logo";
+
+    Discord_UpdatePresence(&presence);
+
+    while (g_Running) {
+        Discord_RunCallbacks();
+        Sleep(500);
+    }
+
+    Discord_Shutdown();
+    return 0;
+}
+```

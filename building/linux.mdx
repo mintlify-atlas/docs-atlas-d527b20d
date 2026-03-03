@@ -1,0 +1,193 @@
+---
+title: Building on Linux
+description: Cross-compile the DLL from Linux using mingw-w64
+---
+
+You can cross-compile the Windows DLL from a Linux system using mingw-w64. This method is used by the project's automated CI/CD pipeline and provides a consistent build environment.
+
+## Requirements
+
+You need a Debian-based Linux system with the following:
+
+- Ubuntu or Debian-based distribution
+- mingw-w64 cross-compiler
+- wget and unzip utilities
+- Internet connection (to download Discord RPC)
+
+## Installing mingw-w64
+
+Install the mingw-w64 toolchain to enable Windows cross-compilation:
+
+```bash
+sudo apt update
+sudo apt install -y mingw-w64
+```
+
+This provides the `i686-w64-mingw32-g++` compiler needed to build 32-bit Windows DLLs.
+
+## Setting up Discord RPC
+
+Download and extract the Discord RPC library:
+
+```bash
+wget https://github.com/discord/discord-rpc/releases/download/v3.4.0/discord-rpc-win.zip
+unzip discord-rpc-win.zip
+```
+
+This provides the headers and libraries needed to link against Discord RPC.
+
+## Build commands
+
+The build process differs slightly depending on which version you're building.
+
+<CodeGroup>
+
+```bash complete.cpp
+i686-w64-mingw32-g++ -shared -o final.dll complete.cpp \
+  -I"discord-rpc/win32-dynamic/include" \
+  -L"discord-rpc/win32-dynamic/lib" \
+  -ldiscord-rpc -luser32 -static-libgcc -static-libstdc++
+```
+
+```bash silence.cpp
+i686-w64-mingw32-g++ -shared -o final.dll silence.cpp \
+  -I"discord-rpc/win32-dynamic/include" \
+  -L"discord-rpc/win32-dynamic/lib" \
+  -ldiscord-rpc -luser32 -static-libgcc -static-libstdc++
+```
+
+</CodeGroup>
+
+### Compiler flags explained
+
+- `-shared` - Create a shared library (DLL)
+- `-o final.dll` - Output filename
+- `-I"discord-rpc/win32-dynamic/include"` - Include directory for Discord RPC headers
+- `-L"discord-rpc/win32-dynamic/lib"` - Library directory for Discord RPC
+- `-ldiscord-rpc` - Link against Discord RPC library
+- `-luser32` - Link against Windows User32 library
+- `-static-libgcc -static-libstdc++` - Statically link C/C++ runtime libraries
+
+## GitHub Actions workflow
+
+The project uses GitHub Actions for automated builds. Here's the complete workflow:
+
+```yaml build-dll.yml
+name: Build DLL for Windows - complete.cpp
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install mingw-w64
+        run: sudo apt update && sudo apt install -y mingw-w64
+
+      - name: Download and extract Discord RPC
+        run: |
+          wget https://github.com/discord/discord-rpc/releases/download/v3.4.0/discord-rpc-win.zip
+          unzip discord-rpc-win.zip
+
+      - name: Build DLL
+        run: |
+          set -e
+          i686-w64-mingw32-g++ -shared -o final.dll complete.cpp \
+          -I"discord-rpc/win32-dynamic/include" \
+          -L"discord-rpc/win32-dynamic/lib" \
+          -ldiscord-rpc -luser32 -static-libgcc -static-libstdc++ \
+          2>&1 | tee build.log
+
+      - name: Upload artifact (DLL)
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-dll
+          path: final.dll
+```
+
+<Note>
+  The workflow uses `set -e` to exit immediately if any command fails, ensuring build errors are caught early.
+</Note>
+
+## Manual build steps
+
+To build manually on your Linux system:
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/poloputoamo/mobaxterm-discord-rpc.git
+    cd mobaxterm-discord-rpc
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    sudo apt update
+    sudo apt install -y mingw-w64 wget unzip
+    ```
+  </Step>
+
+  <Step title="Download Discord RPC">
+    ```bash
+    wget https://github.com/discord/discord-rpc/releases/download/v3.4.0/discord-rpc-win.zip
+    unzip discord-rpc-win.zip
+    ```
+  </Step>
+
+  <Step title="Build the DLL">
+    Choose which version to build:
+    ```bash
+    # For complete version (tracks editor and terminal)
+    i686-w64-mingw32-g++ -shared -o final.dll complete.cpp \
+      -I"discord-rpc/win32-dynamic/include" \
+      -L"discord-rpc/win32-dynamic/lib" \
+      -ldiscord-rpc -luser32 -static-libgcc -static-libstdc++
+
+    # For silence version (basic tracking only)
+    i686-w64-mingw32-g++ -shared -o final.dll silence.cpp \
+      -I"discord-rpc/win32-dynamic/include" \
+      -L"discord-rpc/win32-dynamic/lib" \
+      -ldiscord-rpc -luser32 -static-libgcc -static-libstdc++
+    ```
+  </Step>
+
+  <Step title="Verify the output">
+    Check that `final.dll` was created successfully:
+    ```bash
+    ls -lh final.dll
+    file final.dll
+    ```
+    
+    You should see output indicating it's a PE32 executable for Windows.
+  </Step>
+</Steps>
+
+## Transferring to Windows
+
+After building on Linux, transfer the files to your Windows system:
+
+1. Copy `final.dll` from your build directory
+2. Copy `discord-rpc.dll` from `discord-rpc/win32-dynamic/bin`
+3. Follow the [installation guide](/installation) to deploy the files
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Windows build" icon="windows" href="/building/windows">
+    Build on Windows using CFF Explorer
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/building/troubleshooting">
+    Common build issues and solutions
+  </Card>
+</CardGroup>

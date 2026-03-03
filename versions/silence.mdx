@@ -1,0 +1,227 @@
+---
+title: Silence version
+description: Minimal Discord presence showing only that MobaXterm is running
+---
+
+The silence version provides a lightweight Discord Rich Presence integration that shows only basic status without tracking specific activities.
+
+## What it tracks
+
+The silence version displays:
+
+- **Program status**: Shows that MobaXterm is running
+- **Timestamp**: How long the application has been open
+- **Logo**: MobaXterm branding
+
+That's it. No process monitoring, no activity detection, no frequent updates.
+
+<Info>
+This version uses significantly fewer system resources than the complete version since it doesn't monitor running processes.
+</Info>
+
+## Core implementation
+
+The silence version is much simpler than the complete version. Here's the entire Discord thread implementation:
+
+```cpp silence.cpp
+DWORD WINAPI DiscordThread(LPVOID lpParam) {
+    DiscordEventHandlers handlers;
+    memset(&handlers, 0, sizeof(handlers));
+    handlers.ready = HandleDiscordReady;
+
+    Discord_Initialize("1347921816777392244", &handlers, 1, NULL);
+
+    DiscordRichPresence presence;
+    memset(&presence, 0, sizeof(presence));
+    presence.state = "";
+    presence.details = "";
+    presence.startTimestamp = time(0);
+    presence.largeImageKey = "mobaxterm-logo";
+
+    Discord_UpdatePresence(&presence);
+
+    while (g_Running) {
+        Discord_RunCallbacks();
+        Sleep(500);
+    }
+
+    Discord_Shutdown();
+    return 0;
+}
+```
+
+### Key differences from complete version
+
+<Tabs>
+  <Tab title="Silence">
+    **Minimal implementation:**
+    
+    - No process detection functions
+    - No state tracking structure
+    - Single presence update on startup
+    - Only processes Discord callbacks
+    
+    ```cpp silence.cpp
+    // Set presence once and forget
+    presence.state = "";
+    presence.details = "";
+    presence.startTimestamp = time(0);
+    presence.largeImageKey = "mobaxterm-logo";
+    
+    Discord_UpdatePresence(&presence);
+    ```
+  </Tab>
+  <Tab title="Complete">
+    **Full activity tracking:**
+    
+    - `IsProcessRunning()` function (45 lines)
+    - `bashrun()` helper function
+    - `MobaState` structure
+    - `UpdateMobaState()` function
+    - `UpdateDiscordPresence()` function
+    - Continuous state monitoring
+    
+    ```cpp complete.cpp
+    while (g_Running) {
+        UpdateMobaState();
+        UpdateDiscordPresence();
+        Discord_RunCallbacks();
+        Sleep(500);
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Discord display
+
+Your Discord profile will show:
+
+- **Large image**: MobaXterm logo
+- **Timestamp**: Elapsed time since MobaXterm started
+- **State**: Empty (clean appearance)
+- **Details**: Empty (clean appearance)
+
+<Note>
+The silence version intentionally leaves state and details empty to maintain a minimal presence.
+</Note>
+
+## File size comparison
+
+The implementation differences are significant:
+
+| Version | Lines of code | Complexity |
+|---------|---------------|------------|
+| Silence | 64 lines | Minimal |
+| Complete | 145 lines | Moderate |
+
+**What's removed in silence version:**
+
+- Process snapshot creation (`CreateToolhelp32Snapshot`)
+- Process enumeration (`Process32FirstW`, `Process32NextW`)
+- Window handle tracking
+- State management logic
+- Conditional presence updates
+
+## Performance impact
+
+<Tabs>
+  <Tab title="System resources">
+    **Silence version:**
+    - No process enumeration
+    - No repeated snapshots
+    - Single presence update
+    - Minimal CPU usage
+    
+    **Complete version:**
+    - Process snapshot every 500ms
+    - Multiple process checks per update
+    - Continuous presence updates
+    - Higher CPU usage (still minimal)
+  </Tab>
+  <Tab title="Network activity">
+    **Silence version:**
+    - One Discord update on startup
+    - Heartbeat callbacks only
+    
+    **Complete version:**
+    - Discord update every 500ms
+    - More frequent API calls
+  </Tab>
+</Tabs>
+
+## When to use this version
+
+Choose the silence version if you:
+
+- Want Discord integration without activity details
+- Prefer minimal system resource usage
+- Don't want others to see specific activities
+- Value privacy over detailed status
+- Use MobaXterm on resource-constrained systems
+
+<Info>
+The silence version is ideal for users who want Discord to show they're using MobaXterm without revealing what they're doing in the application.
+</Info>
+
+## Code structure
+
+The complete silence.cpp file structure:
+
+```cpp
+// Global variables
+HANDLE g_ThreadHandle = NULL;
+bool g_Running = true;
+
+// Discord ready callback (empty)
+static void HandleDiscordReady(const DiscordUser* request) {
+    // nada
+}
+
+// Main Discord thread
+DWORD WINAPI DiscordThread(LPVOID lpParam) {
+    // Initialize Discord
+    // Set static presence
+    // Run callbacks loop
+}
+
+// DLL entry point
+BOOL APIENTRY DllMain(...) {
+    // Attach: Create Discord thread
+    // Detach: Clean up thread
+}
+
+// Export for manual initialization
+extern "C" __declspec(dllexport) void StartDiscordRPC() {
+    // Create thread if not running
+}
+```
+
+The entire implementation fits in 64 lines, making it easy to audit and maintain.
+
+## Switching between versions
+
+Both versions use the same DLL injection approach:
+
+1. Replace `MobaXterm.exe` with the version-specific build
+2. Ensure `discord-rpc.dll` and `final.dll` are in the installation directory
+3. Restart MobaXterm
+
+<Note>
+You can switch between versions at any time by swapping the executable. No configuration changes needed.
+</Note>
+
+## Privacy considerations
+
+The silence version offers better privacy:
+
+- No indication of text editing activity
+- No terminal session information
+- No Bash usage detection
+- Others only see "Using MobaXterm"
+
+Compare this to the complete version which broadcasts:
+- When you're editing files
+- When you have terminal sessions open
+- Whether you're running local Bash
+
+If you're working on sensitive projects or prefer to keep your workflow private, the silence version is the better choice.

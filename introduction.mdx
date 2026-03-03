@@ -1,0 +1,121 @@
+---
+title: MobaXterm Discord RPC
+description: Display your MobaXterm activity on Discord with Rich Presence integration
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="MobaXterm Discord RPC Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="MobaXterm Discord RPC Hero Dark"
+/>
+
+## What is MobaXterm Discord RPC?
+
+MobaXterm Discord RPC adds Discord Rich Presence functionality to MobaXterm, allowing you to showcase your terminal and editing activity directly on your Discord profile. When you're working with MobaXterm, your Discord status automatically updates to reflect what you're doing—whether you're editing files, running terminal sessions, or working with local Bash.
+
+This integration is built as a DLL injection that monitors MobaXterm processes and communicates with Discord's RPC API in real-time.
+
+<CardGroup cols={2}>
+  <Card
+    title="Installation"
+    icon="download"
+    href="/installation"
+  >
+    Set up Discord RPC integration with your MobaXterm installation
+  </Card>
+  <Card
+    title="Features"
+    icon="sparkles"
+    href="/features"
+  >
+    Explore the complete and silence versions and their capabilities
+  </Card>
+  <Card
+    title="Building from source"
+    icon="code"
+    href="/building/windows"
+  >
+    Compile the DLL yourself using Windows or Linux cross-compilation
+  </Card>
+  <Card
+    title="Troubleshooting"
+    icon="wrench"
+    href="/building/troubleshooting"
+  >
+    Resolve common issues with RPC integration
+  </Card>
+</CardGroup>
+
+## How it works
+
+The integration works by injecting a custom DLL (`final.dll`) into the MobaXterm process. This DLL:
+
+1. **Monitors process activity** - Tracks running processes like `MobaRTE.exe` (text editor), `MoTTY.exe` (terminal), and `bash.exe`
+2. **Updates Discord presence** - Sends real-time status updates to Discord every 500ms
+3. **Displays context** - Shows what you're doing: editing files, running terminals, or using local Bash
+
+<Note>
+  This integration requires modifying original MobaXterm files. Always backup your installation before proceeding.
+</Note>
+
+## Choose your version
+
+MobaXterm Discord RPC comes in two flavors:
+
+### Complete version
+
+Tracks detailed activity including:
+- Active MobaRTE text editor sessions
+- Open terminal sessions (local and remote)
+- Local Bash process detection
+- Real-time status updates
+
+### Silence version
+
+Minimal presence showing:
+- Basic program open/closed status
+- No activity tracking
+- Simple "running MobaXterm" indicator
+
+<Warning>
+  You must have administrator privileges to install and run this integration properly.
+</Warning>
+
+## Quick preview
+
+When running the complete version, your Discord profile will display:
+
+```cpp
+// Example presence states from complete.cpp
+if (currentState.isEditing) {
+    presence.state = "Editando archivos";
+    presence.details = "Usando el editor de texto";
+}
+else if (currentState.isLocalBash) {
+    presence.state = "Terminal local";
+    presence.details = "Bash";
+}
+else if (currentState.isTerminalActive) {
+    presence.state = "Terminal activa";
+    presence.details = "Terminal";
+}
+```
+
+Your Discord status updates automatically based on which MobaXterm component you're actively using.
+
+## Get started
+
+<CardGroup cols={1}>
+  <Card
+    title="Install MobaXterm Discord RPC"
+    icon="rocket"
+    href="/installation"
+  >
+    Download the latest release and follow the installation guide to get Discord RPC running with MobaXterm in minutes
+  </Card>
+</CardGroup>

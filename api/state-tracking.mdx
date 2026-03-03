@@ -1,0 +1,267 @@
+---
+title: State tracking
+description: Process monitoring and state management API
+---
+
+The state tracking API monitors MobaXterm processes to detect user activity and update Discord presence accordingly. It uses Windows API functions to efficiently track running processes.
+
+## MobaState structure
+
+The `MobaState` structure tracks the current state of MobaXterm components.
+
+```cpp complete.cpp
+struct MobaState {
+    bool isEditing;           // MobaRTE.exe is running
+    bool isTerminalActive;    // MoTTY.exe is running
+    bool isLocalBash;         // bash.exe + MoTTY.exe are running
+    HWND activeWindow;        // Handle to active window
+} currentState;
+```
+
+<ResponseField name="isEditing" type="bool">
+  `true` when the MobaXterm text editor (MobaRTE.exe) is running.
+</ResponseField>
+
+<ResponseField name="isTerminalActive" type="bool">
+  `true` when a terminal session (MoTTY.exe) is active.
+</ResponseField>
+
+<ResponseField name="isLocalBash" type="bool">
+  `true` when a local bash session is running (both bash.exe and MoTTY.exe).
+</ResponseField>
+
+<ResponseField name="activeWindow" type="HWND">
+  Handle to the currently active window (reserved for future use).
+</ResponseField>
+
+## Core functions
+
+### IsProcessRunning()
+
+Checks if a specific process is currently running using Windows Toolhelp32 snapshots.
+
+<ParamField path="processName" type="const wchar_t*" required>
+  Wide-character process name to search for (e.g., `L"MobaRTE.exe"`).
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if the process is found, `false` otherwise.
+</ResponseField>
+
+```cpp complete.cpp
+bool IsProcessRunning(const wchar_t* processName) {
+    static HANDLE snapshot = INVALID_HANDLE_VALUE;
+    static DWORD lastCheck = 0;
+    DWORD currentTime = GetTickCount();
+    
+    // Update snapshot every 500ms
+    if (currentTime - lastCheck > 500 || snapshot == INVALID_HANDLE_VALUE) {
+        if (snapshot != INVALID_HANDLE_VALUE) CloseHandle(snapshot);
+        snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        lastCheck = currentTime;
+    }
+
+    if (snapshot == INVALID_HANDLE_VALUE) return false;
+
+    PROCESSENTRY32W pe32;
+    pe32.dwSize = sizeof(pe32);
+
+    if (!Process32FirstW(snapshot, &pe32)) return false;
+
+    do {
+        if (_wcsicmp(pe32.szExeFile, processName) == 0) {
+            return true;
+        }
+    } while (Process32NextW(snapshot, &pe32));
+
+    return false;
+}
+```
+
+<Note>
+The function caches the process snapshot for 500ms to improve performance and reduce system calls.
+</Note>
+
+### bashrun()
+
+Detects if a local bash session is active by checking for both bash.exe and MoTTY.exe processes.
+
+<ResponseField name="return" type="bool">
+  Returns `true` if both bash.exe and MoTTY.exe are running simultaneously.
+</ResponseField>
+
+```cpp complete.cpp
+bool bashrun() {
+    return IsProcessRunning(L"bash.exe") && IsProcessRunning(L"MoTTY.exe");
+}
+```
+
+### UpdateMobaState()
+
+Updates the global `currentState` structure by checking all tracked processes.
+
+```cpp complete.cpp
+void UpdateMobaState() {
+    currentState.isEditing = IsProcessRunning(L"MobaRTE.exe");
+    currentState.isTerminalActive = IsProcessRunning(L"MoTTY.exe");
+    currentState.isLocalBash = bashrun();
+}
+```
+
+<Note>
+Call `UpdateMobaState()` before updating Discord presence to ensure you're showing current activity.
+</Note>
+
+## Tracked processes
+
+The state tracking system monitors these MobaXterm processes:
+
+<AccordionGroup>
+  <Accordion title="MobaRTE.exe">
+    **MobaXterm Text Editor**
+    
+    Indicates when the user is editing files in the MobaXterm built-in text editor.
+    
+    ```cpp
+    currentState.isEditing = IsProcessRunning(L"MobaRTE.exe");
+    ```
+  </Accordion>
+  
+  <Accordion title="MoTTY.exe">
+    **MobaXterm Terminal Emulator**
+    
+    Indicates when any terminal session is active (local or remote).
+    
+    ```cpp
+    currentState.isTerminalActive = IsProcessRunning(L"MoTTY.exe");
+    ```
+  </Accordion>
+  
+  <Accordion title="bash.exe">
+    **Bash Shell**
+    
+    Combined with MoTTY.exe detection to identify local bash sessions specifically.
+    
+    ```cpp
+    currentState.isLocalBash = bashrun();
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Integration with Discord presence
+
+The state tracking system integrates with Discord RPC to show contextual presence information:
+
+```cpp complete.cpp
+void UpdateDiscordPresence() {
+    DiscordRichPresence presence;
+    memset(&presence, 0, sizeof(presence));
+    
+    presence.startTimestamp = g_StartTimestamp;
+    presence.largeImageKey = "moba-logo";
+    presence.largeImageText = "MobaXterm";
+    
+    if (currentState.isEditing) {
+        presence.state = "Editando archivos";
+        presence.details = "Usando el editor de texto";
+        presence.smallImageKey = "moba-logo";
+        presence.smallImageText = "Editor";
+    }
+    else if (currentState.isLocalBash) {
+        presence.state = "Terminal local";
+        presence.details = "Bash";
+        presence.smallImageKey = "bash";
+        presence.smallImageText = "Local Bash";
+    }
+    else if (currentState.isTerminalActive) {
+        presence.state = "Terminal activa";
+        presence.details = "Terminal";
+        presence.smallImageKey = "terminal";
+        presence.smallImageText = "Terminal";
+    }
+    else {
+        presence.state = "MobaXterm";
+        presence.details = "Inactivo";
+    }
+
+    Discord_UpdatePresence(&presence);
+}
+```
+
+## State priority
+
+The system checks states in priority order:
+
+1. **Editing** (`isEditing`) - Highest priority
+2. **Local bash** (`isLocalBash`) - Medium-high priority
+3. **Terminal active** (`isTerminalActive`) - Medium priority
+4. **Idle** - Default state
+
+<Warning>
+The order matters! `isLocalBash` is checked before `isTerminalActive` because bash sessions also have MoTTY.exe running.
+</Warning>
+
+## Main update loop
+
+The state tracking runs in the Discord thread with 500ms update intervals:
+
+```cpp complete.cpp
+while (g_Running) {
+    UpdateMobaState();
+    UpdateDiscordPresence();
+    Discord_RunCallbacks();
+    Sleep(500);
+}
+```
+
+## Performance considerations
+
+<CardGroup cols={2}>
+  <Card title="Snapshot caching" icon="clock">
+    Process snapshots are cached for 500ms to minimize system overhead.
+  </Card>
+  
+  <Card title="Update frequency" icon="rotate">
+    State updates occur every 500ms, balancing responsiveness with CPU usage.
+  </Card>
+  
+  <Card title="Static handles" icon="memory">
+    Static handles reduce memory allocations and improve performance.
+  </Card>
+  
+  <Card title="Case-insensitive matching" icon="magnifying-glass">
+    Process names are matched using `_wcsicmp()` for reliability.
+  </Card>
+</CardGroup>
+
+## Example usage
+
+Here's a complete example showing initialization and state tracking:
+
+```cpp
+// Global state
+struct MobaState {
+    bool isEditing;
+    bool isTerminalActive;
+    bool isLocalBash;
+    HWND activeWindow;
+} currentState;
+
+// Initialize
+memset(&currentState, 0, sizeof(currentState));
+
+// Main loop
+while (g_Running) {
+    // Update process state
+    UpdateMobaState();
+    
+    // Update Discord with current state
+    UpdateDiscordPresence();
+    
+    // Process Discord callbacks
+    Discord_RunCallbacks();
+    
+    // Wait before next update
+    Sleep(500);
+}
+```

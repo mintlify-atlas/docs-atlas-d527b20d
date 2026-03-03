@@ -1,0 +1,206 @@
+---
+title: Features
+description: Comprehensive overview of MobaXterm Discord RPC capabilities and versions
+---
+
+## Feature overview
+
+MobaXterm Discord RPC provides real-time Discord Rich Presence integration that reflects your current activity within MobaXterm. The integration operates through a background thread that continuously monitors your session and updates Discord accordingly.
+
+## Two versions available
+
+### Complete version (`mobaxterm-complete`)
+
+The complete version provides detailed activity tracking with intelligent process detection.
+
+<CardGroup cols={2}>
+  <Card title="Text editor tracking" icon="file-code">
+    Detects when you're using MobaRTE (MobaXterm's built-in text editor) and displays "Editing files" status
+  </Card>
+  <Card title="Terminal monitoring" icon="terminal">
+    Tracks active MoTTY terminal sessions, both local and remote connections
+  </Card>
+  <Card title="Bash detection" icon="code">
+    Identifies when you're running local Bash sessions by detecting both bash.exe and MoTTY.exe processes
+  </Card>
+  <Card title="Real-time updates" icon="clock">
+    Refreshes your Discord status every 500ms for instant activity reflection
+  </Card>
+</CardGroup>
+
+#### What Discord displays
+
+Based on the implementation in `complete.cpp:61-94`, your Discord Rich Presence shows:
+
+**When editing files:**
+```
+Details: "Usando el editor de texto"
+State: "Editando archivos"
+Small Icon: MobaXterm logo (Editor)
+```
+
+**When using local Bash:**
+```
+Details: "Bash"
+State: "Terminal local"
+Small Icon: Bash icon
+```
+
+**When in a terminal session:**
+```
+Details: "Terminal"
+State: "Terminal activa"
+Small Icon: Terminal icon
+```
+
+**When idle:**
+```
+Details: "Inactivo"
+State: "MobaXterm"
+```
+
+<Note>
+  All presence states include a timestamp showing how long you've been using MobaXterm, tracked from the moment Discord RPC initializes.
+</Note>
+
+### Silence version (`mobaxterm-silence`)
+
+The silence version provides minimal presence without activity details—perfect if you want to show you're using MobaXterm without revealing what you're working on.
+
+**Discord display:**
+```cpp
+// From silence.cpp:19-24
+presence.state = "";
+presence.details = "";
+presence.startTimestamp = time(0);
+presence.largeImageKey = "mobaxterm-logo";
+```
+
+This shows only:
+- MobaXterm logo
+- Timestamp (elapsed time)
+- No activity details
+- No status text
+
+## Technical implementation
+
+### Process detection mechanism
+
+The complete version uses Windows API to monitor specific processes:
+
+```cpp
+// From complete.cpp:19-45
+bool IsProcessRunning(const wchar_t* processName) {
+    // Creates process snapshot every 500ms
+    snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    
+    // Iterates through running processes
+    // Compares process names case-insensitively
+    // Returns true if process found
+}
+```
+
+**Monitored processes:**
+- `MobaRTE.exe` - Text editor (`complete.cpp:52`)
+- `MoTTY.exe` - Terminal emulator (`complete.cpp:53`)
+- `bash.exe` - Local Bash shell (`complete.cpp:48`)
+
+### State management
+
+The integration maintains a state structure that tracks your current activity:
+
+```cpp
+// From complete.cpp:12-17
+struct MobaState {
+    bool isEditing;           // MobaRTE.exe running
+    bool isTerminalActive;    // MoTTY.exe running
+    bool isLocalBash;         // Both bash.exe and MoTTY.exe
+    HWND activeWindow;
+} currentState;
+```
+
+This state updates every 500ms through the `UpdateMobaState()` function (`complete.cpp:51-55`).
+
+### Discord integration
+
+Both versions use the Discord RPC SDK with these key components:
+
+**Initialization:**
+```cpp
+// Application ID used for both versions
+Discord_Initialize("1347921816777392244", &handlers, 1, NULL);
+```
+
+**Thread management:**
+- Runs in a separate thread to avoid blocking MobaXterm (`complete.cpp:96-113`)
+- Gracefully shuts down when MobaXterm closes (`complete.cpp:127-132`)
+- Implements Discord's callback system for event handling
+
+**Update frequency:**
+- Complete version: Updates presence and checks processes every 500ms
+- Silence version: Only runs callbacks every 500ms (no state checking needed)
+
+## Performance characteristics
+
+<CardGroup cols={2}>
+  <Card title="Memory footprint" icon="memory">
+    Minimal - runs in a single background thread with small state structure
+  </Card>
+  <Card title="CPU usage" icon="microchip">
+    Low - process checks cached for 500ms intervals to reduce overhead
+  </Card>
+  <Card title="Network activity" icon="wifi">
+    Minimal - only sends updates to Discord when presence state changes
+  </Card>
+  <Card title="Startup time" icon="bolt">
+    Instant - thread spawns immediately on DLL injection
+  </Card>
+</CardGroup>
+
+## Version comparison
+
+| Feature | Complete | Silence |
+|---------|----------|----------|
+| Editor activity tracking | ✅ Yes | ❌ No |
+| Terminal monitoring | ✅ Yes | ❌ No |
+| Bash detection | ✅ Yes | ❌ No |
+| Status text | ✅ Detailed | ❌ Empty |
+| Activity icons | ✅ Dynamic | ⚠️ Logo only |
+| Process monitoring | ✅ Active | ❌ None |
+| File size | ~Larger | ~Smaller |
+| Resource usage | ~Medium | ~Minimal |
+| Privacy level | Lower | Higher |
+
+<Warning>
+  The complete version reveals what you're working on. If you need privacy while still showing MobaXterm usage, use the silence version.
+</Warning>
+
+## Exported functions
+
+Both DLL versions export a function for manual RPC initialization:
+
+```cpp
+// From complete.cpp:138-144 and silence.cpp:58-63
+extern "C" __declspec(dllexport) void StartDiscordRPC()
+```
+
+This allows programmatic control over when Discord RPC starts, though it typically initializes automatically on DLL injection (`DLL_PROCESS_ATTACH`).
+
+## Choose your version
+
+Select based on your needs:
+
+<CardGroup cols={2}>
+  <Card title="Use complete if:" icon="check">
+    - You want to showcase your work
+    - You like detailed presence information
+    - You don't mind activity visibility
+    - You want dynamic status updates
+  </Card>
+  <Card title="Use silence if:" icon="eye-slash">
+    - You value privacy
+    - You only want to show "using MobaXterm"
+    - You want minimal resource usage
+    - You don't need activity details
+  </Card>
+</CardGroup>

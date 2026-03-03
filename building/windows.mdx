@@ -1,0 +1,114 @@
+---
+title: Building on Windows
+description: Build the DLL on Windows using CFF Explorer
+---
+
+You can build the MobaXterm Discord RPC integration on Windows using CFF Explorer to modify the executable and add the Discord RPC functionality.
+
+## Requirements
+
+Before you begin, ensure you have:
+
+- Windows operating system
+- CFF Explorer (for PE file modification)
+- Original MobaXterm.exe
+- Pre-built `discord-rpc.dll` (Windows 32-bit)
+
+<Note>
+  Always backup your original MobaXterm.exe before making any modifications.
+</Note>
+
+## Getting discord-rpc.dll
+
+You need the pre-built Discord RPC library for Windows 32-bit:
+
+<Steps>
+  <Step title="Download Discord RPC">
+    Visit the [discord-rpc releases page](https://github.com/discord/discord-rpc/releases) and download the Windows build.
+  </Step>
+
+  <Step title="Extract the DLL">
+    Extract the archive and locate `discord-rpc.dll` in the `win32-dynamic/bin` directory.
+  </Step>
+
+  <Step title="Keep it accessible">
+    Place the DLL in a location you can easily reference during the build process.
+  </Step>
+</Steps>
+
+## Building with CFF Explorer
+
+CFF Explorer allows you to modify the import table of the MobaXterm executable to integrate Discord RPC functionality.
+
+<Steps>
+  <Step title="Open MobaXterm.exe in CFF Explorer">
+    Launch CFF Explorer and open your original `MobaXterm.exe` file.
+  </Step>
+
+  <Step title="Navigate to Import Adder">
+    In the left sidebar, find and click on the **Import Adder** section.
+  </Step>
+
+  <Step title="Add discord-rpc.dll module">
+    Click **Add Module** and select or type `discord-rpc.dll` as the module name.
+  </Step>
+
+  <Step title="Import required functions">
+    Under **Export Functions**, select **Import by Name** and add the Discord RPC functions your code requires.
+  </Step>
+
+  <Step title="Rebuild import table">
+    Click **Rebuild Import Table** to apply the changes to the executable.
+  </Step>
+
+  <Step title="Save the modified executable">
+    Save the modified MobaXterm.exe with a new name or replace the original (ensure you have a backup).
+  </Step>
+</Steps>
+
+## Alternative: Pre-built DLLs
+
+If you prefer not to build manually, you can obtain pre-built DLLs from the project's GitHub Actions:
+
+<Warning>
+  Pre-built DLLs from GitHub Actions are automatically generated and may not always be stable. Test thoroughly before deploying.
+</Warning>
+
+Visit the [Actions page](https://github.com/poloputoamo/mobaxterm-discord-rpc/actions) to download:
+- `final.dll` (complete or silence version)
+- Modified `MobaXterm.exe`
+- `discord-rpc.dll`
+
+## Installation after building
+
+Once you've built or obtained the necessary files:
+
+<Steps>
+  <Step title="Locate installation directory">
+    Navigate to your MobaXterm installation:
+    ```cmd
+    C:\Program Files (x86)\Mobatek\MobaXterm
+    ```
+  </Step>
+
+  <Step title="Replace and add files">
+    - Replace the original `MobaXterm.exe` with your modified version
+    - Add `discord-rpc.dll` to the directory
+    - Add `final.dll` to the directory
+  </Step>
+
+  <Step title="Launch MobaXterm">
+    Start MobaXterm as administrator to ensure proper Discord RPC functionality.
+  </Step>
+</Steps>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Linux build" icon="linux" href="/building/linux">
+    Cross-compile from Linux using mingw-w64
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/building/troubleshooting">
+    Common build issues and solutions
+  </Card>
+</CardGroup>

@@ -1,0 +1,226 @@
+---
+title: Complete version
+description: Full activity tracking with MobaRTE editor and terminal session detection
+---
+
+The complete version provides comprehensive Discord Rich Presence tracking for MobaXterm. It monitors active processes and displays detailed activity information in your Discord profile.
+
+## What it tracks
+
+The complete version detects and displays:
+
+- **MobaRTE text editor** sessions
+- **Terminal sessions** (MoTTY)
+- **Local Bash** sessions
+- **Idle state** when no activity is detected
+
+<Info>
+The complete version updates your Discord presence every 500ms to reflect your current activity in real-time.
+</Info>
+
+## Core implementation
+
+### State tracking structure
+
+The implementation uses a `MobaState` struct to track different activities:
+
+```cpp complete.cpp
+struct MobaState {
+    bool isEditing;
+    bool isTerminalActive;
+    bool isLocalBash;
+    HWND activeWindow;
+} currentState;
+```
+
+### Process detection
+
+The `IsProcessRunning()` function checks if specific MobaXterm processes are active:
+
+```cpp complete.cpp
+bool IsProcessRunning(const wchar_t* processName) {
+    static HANDLE snapshot = INVALID_HANDLE_VALUE;
+    static DWORD lastCheck = 0;
+    DWORD currentTime = GetTickCount();
+    
+    // Update snapshot every 500ms
+    if (currentTime - lastCheck > 500 || snapshot == INVALID_HANDLE_VALUE) {
+        if (snapshot != INVALID_HANDLE_VALUE) CloseHandle(snapshot);
+        snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        lastCheck = currentTime;
+    }
+
+    if (snapshot == INVALID_HANDLE_VALUE) return false;
+
+    PROCESSENTRY32W pe32;
+    pe32.dwSize = sizeof(pe32);
+
+    if (!Process32FirstW(snapshot, &pe32)) return false;
+
+    do {
+        if (_wcsicmp(pe32.szExeFile, processName) == 0) {
+            return true;
+        }
+    } while (Process32NextW(snapshot, &pe32));
+
+    return false;
+}
+```
+
+This function:
+- Creates a process snapshot every 500ms for performance
+- Iterates through running processes
+- Compares process names case-insensitively
+- Returns `true` if the target process is found
+
+### Bash session detection
+
+The `bashrun()` helper detects local Bash sessions:
+
+```cpp complete.cpp
+bool bashrun() {
+    return IsProcessRunning(L"bash.exe") && IsProcessRunning(L"MoTTY.exe");
+}
+```
+
+<Note>
+A local Bash session is only detected when both `bash.exe` and `MoTTY.exe` are running simultaneously.
+</Note>
+
+### State updates
+
+The `UpdateMobaState()` function refreshes activity tracking:
+
+```cpp complete.cpp
+void UpdateMobaState() {
+    currentState.isEditing = IsProcessRunning(L"MobaRTE.exe");
+    currentState.isTerminalActive = IsProcessRunning(L"MoTTY.exe");
+    currentState.isLocalBash = bashrun();
+}
+```
+
+### Discord presence updates
+
+The `UpdateDiscordPresence()` function sets your Discord status based on current activity:
+
+```cpp complete.cpp
+void UpdateDiscordPresence() {
+    DiscordRichPresence presence;
+    memset(&presence, 0, sizeof(presence));
+    
+    presence.startTimestamp = g_StartTimestamp;
+    presence.largeImageKey = "moba-logo";
+    presence.largeImageText = "MobaXterm";
+    
+    if (currentState.isEditing) {
+        presence.state = "Editando archivos";
+        presence.details = "Usando el editor de texto";
+        presence.smallImageKey = "moba-logo";
+        presence.smallImageText = "Editor";
+    }
+    else if (currentState.isLocalBash) {
+        presence.state = "Terminal local";
+        presence.details = "Bash";
+        presence.smallImageKey = "bash";
+        presence.smallImageText = "Local Bash";
+    }
+    else if (currentState.isTerminalActive) {
+        presence.state = "Terminal activa";
+        presence.details = "Terminal";
+        presence.smallImageKey = "terminal";
+        presence.smallImageText = "Terminal";
+    }
+    else {
+        presence.state = "MobaXterm";
+        presence.details = "Inactivo";
+    }
+
+    Discord_UpdatePresence(&presence);
+}
+```
+
+## Discord display states
+
+Your Discord profile will show different information based on your activity:
+
+<Tabs>
+  <Tab title="Text editor">
+    When `MobaRTE.exe` is running:
+    
+    - **State**: "Editando archivos"
+    - **Details**: "Usando el editor de texto"
+    - **Small icon**: Editor icon
+    - **Large icon**: MobaXterm logo
+  </Tab>
+  <Tab title="Local Bash">
+    When both `bash.exe` and `MoTTY.exe` are running:
+    
+    - **State**: "Terminal local"
+    - **Details**: "Bash"
+    - **Small icon**: Bash icon
+    - **Large icon**: MobaXterm logo
+  </Tab>
+  <Tab title="Terminal">
+    When `MoTTY.exe` is running (without Bash):
+    
+    - **State**: "Terminal activa"
+    - **Details**: "Terminal"
+    - **Small icon**: Terminal icon
+    - **Large icon**: MobaXterm logo
+  </Tab>
+  <Tab title="Idle">
+    When no specific activity is detected:
+    
+    - **State**: "MobaXterm"
+    - **Details**: "Inactivo"
+    - **Large icon**: MobaXterm logo
+  </Tab>
+</Tabs>
+
+<Info>
+All presence states include a timestamp showing how long you've been using MobaXterm.
+</Info>
+
+## Main thread loop
+
+The Discord thread continuously monitors and updates your status:
+
+```cpp complete.cpp
+DWORD WINAPI DiscordThread(LPVOID lpParam) {
+    DiscordEventHandlers handlers;
+    memset(&handlers, 0, sizeof(handlers));
+    handlers.ready = HandleDiscordReady;
+
+    Discord_Initialize("1347921816777392244", &handlers, 1, NULL);
+    g_StartTimestamp = time(0);
+
+    while (g_Running) {
+        UpdateMobaState();
+        UpdateDiscordPresence();
+        Discord_RunCallbacks();
+        Sleep(500); // Update every 500ms
+    }
+
+    Discord_Shutdown();
+    return 0;
+}
+```
+
+The main loop:
+1. Updates the current MobaXterm state
+2. Updates Discord presence based on the state
+3. Processes Discord callbacks
+4. Waits 500ms before the next update
+
+## When to use this version
+
+Choose the complete version if you:
+
+- Want detailed activity tracking in Discord
+- Frequently switch between text editing and terminal work
+- Want others to see what you're actively working on
+- Don't mind the small performance overhead of process monitoring
+
+<Note>
+If you prefer minimal Discord integration, consider using the [silence version](/versions/silence) instead.
+</Note>

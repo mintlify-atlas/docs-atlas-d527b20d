@@ -1,0 +1,269 @@
+---
+title: Troubleshooting
+description: Common build and runtime issues and their solutions
+---
+
+This guide covers common issues you may encounter when building or running MobaXterm Discord RPC, along with their solutions.
+
+## Build issues
+
+<AccordionGroup>
+  <Accordion title="mingw-w64 compiler not found">
+    **Symptom:** `i686-w64-mingw32-g++: command not found` or similar error
+
+    **Solution:**
+    
+    Install the mingw-w64 toolchain:
+    ```bash
+    sudo apt update
+    sudo apt install -y mingw-w64
+    ```
+
+    Verify installation:
+    ```bash
+    i686-w64-mingw32-g++ --version
+    ```
+
+    If the command still isn't found, ensure `/usr/bin` is in your PATH.
+  </Accordion>
+
+  <Accordion title="Discord RPC headers not found">
+    **Symptom:** `fatal error: discord_rpc.h: No such file or directory`
+
+    **Solution:**
+
+    Ensure you've downloaded and extracted Discord RPC:
+    ```bash
+    wget https://github.com/discord/discord-rpc/releases/download/v3.4.0/discord-rpc-win.zip
+    unzip discord-rpc-win.zip
+    ```
+
+    Verify the directory structure:
+    ```bash
+    ls discord-rpc/win32-dynamic/include/
+    ```
+
+    You should see `discord_rpc.h` and other headers.
+
+    If the path is different, adjust the `-I` flag in your build command to point to the correct include directory.
+  </Accordion>
+
+  <Accordion title="Linking errors with discord-rpc">
+    **Symptom:** `undefined reference to 'Discord_Initialize'` or similar linking errors
+
+    **Solution:**
+
+    Ensure the library path is correct:
+    ```bash
+    ls discord-rpc/win32-dynamic/lib/
+    ```
+
+    You should see `discord-rpc.lib` or similar library files.
+
+    Make sure your build command includes:
+    ```bash
+    -L"discord-rpc/win32-dynamic/lib" -ldiscord-rpc
+    ```
+
+    If the library is named differently (e.g., `libdiscord-rpc.a`), adjust the `-l` flag accordingly.
+  </Accordion>
+
+  <Accordion title="Build succeeds but DLL is missing on Windows">
+    **Symptom:** Build completes without errors, but `final.dll` doesn't appear or isn't usable
+
+    **Solution:**
+
+    Verify the DLL was created:
+    ```bash
+    ls -lh final.dll
+    file final.dll
+    ```
+
+    The output should show it's a PE32 executable for Windows (DLL).
+
+    If the file is 0 bytes or corrupted, check the build log for warnings:
+    ```bash
+    i686-w64-mingw32-g++ -shared -o final.dll complete.cpp \
+      -I"discord-rpc/win32-dynamic/include" \
+      -L"discord-rpc/win32-dynamic/lib" \
+      -ldiscord-rpc -luser32 -static-libgcc -static-libstdc++ \
+      2>&1 | tee build.log
+    ```
+
+    Review `build.log` for any issues.
+  </Accordion>
+
+  <Accordion title="Permission denied when building">
+    **Symptom:** `Permission denied` errors during compilation
+
+    **Solution:**
+
+    Ensure you have write permissions in the build directory:
+    ```bash
+    chmod +w .
+    ```
+
+    If building in a protected directory, consider building in your home directory or `/tmp`:
+    ```bash
+    cd ~/mobaxterm-discord-rpc
+    # then build
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Runtime issues
+
+<AccordionGroup>
+  <Accordion title="MobaXterm crashes on startup">
+    **Symptom:** MobaXterm fails to launch or crashes immediately after starting
+
+    **Solution:**
+
+    1. Verify all required DLLs are present:
+       - `discord-rpc.dll` in the MobaXterm directory
+       - `final.dll` in the MobaXterm directory
+       - Modified `MobaXterm.exe`
+
+    2. Check DLL architecture (must be 32-bit):
+       - Use a tool like [Dependency Walker](https://www.dependencywalker.com/) to inspect the DLLs
+       - Ensure all DLLs are 32-bit (x86), not 64-bit
+
+    3. Restore your backup:
+       - Replace the modified files with your original backup
+       - Try the installation process again
+
+    4. Run as administrator:
+       - Right-click MobaXterm.exe
+       - Select "Run as administrator"
+  </Accordion>
+
+  <Accordion title="Discord Rich Presence not showing">
+    **Symptom:** MobaXterm runs normally but Discord doesn't show Rich Presence
+
+    **Solution:**
+
+    1. Verify Discord is running and logged in
+
+    2. Check Discord settings:
+       - Open Discord Settings → Activity Privacy
+       - Enable "Display current activity as a status message"
+
+    3. Ensure MobaXterm is running as administrator:
+       - Right-click MobaXterm.exe → Run as administrator
+
+    4. Verify the correct version is installed:
+       - `mobaxterm-complete` tracks editor and terminal sessions
+       - `mobaxterm-silence` only tracks basic open/closed status
+
+    5. Check if discord-rpc.dll is loaded:
+       - Use Process Explorer to inspect MobaXterm.exe
+       - Verify `discord-rpc.dll` appears in the loaded modules list
+  </Accordion>
+
+  <Accordion title="Missing DLL errors">
+    **Symptom:** Error messages like "discord-rpc.dll not found" or "final.dll is missing"
+
+    **Solution:**
+
+    Ensure all files are in the correct location:
+    ```cmd
+    C:\Program Files (x86)\Mobatek\MobaXterm\
+    ├── MobaXterm.exe (modified version)
+    ├── discord-rpc.dll
+    └── final.dll
+    ```
+
+    Download the required DLLs:
+    - `discord-rpc.dll` from [discord-rpc releases](https://github.com/discord/discord-rpc/releases) (win32-dynamic/bin)
+    - `final.dll` from [project releases](https://github.com/poloputoamo/mobaxterm-discord-rpc/releases)
+
+    If the error persists, use Dependency Walker to identify additional missing dependencies.
+  </Accordion>
+
+  <Accordion title="Access denied when replacing files">
+    **Symptom:** Cannot copy files to MobaXterm directory
+
+    **Solution:**
+
+    1. Close MobaXterm completely (check Task Manager)
+
+    2. Open File Explorer as administrator:
+       - Search for "File Explorer" in Start menu
+       - Right-click → Run as administrator
+       - Navigate to `C:\Program Files (x86)\Mobatek\MobaXterm`
+
+    3. Disable antivirus temporarily:
+       - Some antivirus software may block modifications
+       - Add an exception for the MobaXterm directory
+
+    4. Check file permissions:
+       - Right-click the directory → Properties → Security
+       - Ensure your user has "Full control" permissions
+  </Accordion>
+
+  <Accordion title="Wrong activity showing in Discord">
+    **Symptom:** Discord shows incorrect or outdated information
+
+    **Solution:**
+
+    1. Verify you installed the correct version:
+       - `mobaxterm-complete`: Shows detailed editor/terminal info
+       - `mobaxterm-silence`: Shows only basic program status
+
+    2. Restart both applications:
+       - Close MobaXterm completely
+       - Restart Discord
+       - Launch MobaXterm as administrator
+
+    3. Check for multiple instances:
+       - Use Task Manager to ensure only one MobaXterm.exe is running
+       - Kill any duplicate processes
+  </Accordion>
+</AccordionGroup>
+
+## Verification steps
+
+After building or installing, verify everything is working correctly:
+
+<Steps>
+  <Step title="Check file presence">
+    Ensure all required files are in the installation directory:
+    ```cmd
+    dir "C:\Program Files (x86)\Mobatek\MobaXterm"
+    ```
+
+    You should see:
+    - `MobaXterm.exe` (modified)
+    - `discord-rpc.dll`
+    - `final.dll`
+  </Step>
+
+  <Step title="Verify DLL architecture">
+    Use `file` command on Linux or Dependency Walker on Windows to confirm all DLLs are 32-bit (PE32).
+  </Step>
+
+  <Step title="Launch MobaXterm">
+    Start MobaXterm as administrator and verify it launches without errors.
+  </Step>
+
+  <Step title="Check Discord">
+    Open Discord and verify your profile shows "Playing MobaXterm" or similar Rich Presence activity.
+  </Step>
+</Steps>
+
+## Getting help
+
+If you're still experiencing issues:
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/poloputoamo/mobaxterm-discord-rpc/issues">
+    Report bugs or ask questions on the project's GitHub
+  </Card>
+  <Card title="Check Actions" icon="gear" href="https://github.com/poloputoamo/mobaxterm-discord-rpc/actions">
+    View automated build logs for reference
+  </Card>
+</CardGroup>
+
+<Warning>
+  Always maintain backups of your original MobaXterm installation. If issues persist, restore from backup and retry the installation process.
+</Warning>

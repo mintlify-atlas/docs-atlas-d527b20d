@@ -1,0 +1,147 @@
+---
+title: Installation
+description: Complete guide to installing MobaXterm Discord RPC integration
+---
+
+## Prerequisites
+
+Before installing MobaXterm Discord RPC, ensure you have the following:
+
+- **Windows OS** - This integration only works on Windows systems
+- **Administrator privileges** - Required to modify files in the Program Files directory
+- **MobaXterm installed** - The application must already be installed on your system
+- **Discord running** - Discord must be running to display Rich Presence
+
+<Warning>
+  This installation requires modifying original MobaXterm files. Always backup your installation before proceeding.
+</Warning>
+
+## Version types
+
+Choose the version that best fits your needs:
+
+### mobaxterm-complete
+
+Tracks detailed activity information:
+- Active MobaRTE text editor sessions
+- Open terminal sessions
+- Local bash sessions
+- Real-time status updates
+
+### mobaxterm-silence
+
+Minimal tracking:
+- Only shows that MobaXterm is open
+- No detailed session information
+- Lightweight presence
+
+## Installation steps
+
+<Steps>
+  <Step title="Download required files">
+    Download the latest release files from the [GitHub releases page](https://github.com/poloputoamo/mobaxterm-discord-rpc/releases):
+
+    - `MobaXterm.exe` (download either `mobaxterm-complete` or `mobaxterm-silence` and rename to `MobaXterm.exe`)
+    - `final.dll` (rename from the downloaded DLL)
+    - `discord-rpc.dll`
+
+    <Note>
+      The release files are packaged with different names. Make sure to rename them according to the instructions above.
+    </Note>
+  </Step>
+
+  <Step title="Backup original files">
+    Before replacing any files, create a backup of your original MobaXterm installation:
+
+    1. Navigate to your MobaXterm installation directory (typically `C:\Program Files (x86)\Mobatek\MobaXterm`)
+    2. Copy `MobaXterm.exe` to a safe location
+    3. Name it something like `MobaXterm.exe.backup`
+
+    <Warning>
+      Keep this backup in a safe location. You'll need it if you want to revert the changes or if something goes wrong.
+    </Warning>
+  </Step>
+
+  <Step title="Locate installation directory">
+    Open File Explorer and navigate to your MobaXterm installation directory:
+
+    ```cmd
+    C:\Program Files (x86)\Mobatek\MobaXterm
+    ```
+
+    <Note>
+      If you installed MobaXterm in a custom location, navigate to that directory instead.
+    </Note>
+  </Step>
+
+  <Step title="Replace and add files">
+    In the MobaXterm installation directory:
+
+    1. Replace the original `MobaXterm.exe` with the downloaded and renamed version
+    2. Add `discord-rpc.dll` to the directory
+    3. Add `final.dll` to the directory
+
+    Your installation directory should now contain:
+    - `MobaXterm.exe` (modified version)
+    - `discord-rpc.dll` (new file)
+    - `final.dll` (new file)
+    - Other original MobaXterm files
+  </Step>
+
+  <Step title="Launch MobaXterm">
+    Right-click on `MobaXterm.exe` and select **Run as administrator** to ensure Discord RPC functionality works properly.
+
+    <Note>
+      Administrator privileges are required for the Discord RPC integration to function correctly.
+    </Note>
+  </Step>
+
+  <Step title="Verify installation">
+    Once MobaXterm is running:
+
+    1. Open Discord
+    2. Check your profile - you should see "Playing MobaXterm" under your username
+    3. If using `mobaxterm-complete`, open a terminal or editor to see detailed status updates
+
+    If you don't see the Rich Presence, try:
+    - Restarting Discord
+    - Ensuring Discord is running before launching MobaXterm
+    - Running MobaXterm as administrator
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Discord RPC not showing
+
+- Ensure Discord is running before launching MobaXterm
+- Launch MobaXterm with administrator privileges
+- Check that all three files (`MobaXterm.exe`, `discord-rpc.dll`, and `final.dll`) are in the same directory
+- Verify that Discord Rich Presence is enabled in Discord settings (User Settings > Activity Privacy > Display current activity)
+
+### Application won't start
+
+- Restore your backup `MobaXterm.exe`
+- Verify you downloaded the correct files for your version
+- Ensure all required DLL files are present
+- Check Windows Event Viewer for error details
+
+### Wrong version installed
+
+If you want to switch between `mobaxterm-complete` and `mobaxterm-silence`:
+
+1. Download the other version from releases
+2. Rename it to `MobaXterm.exe`
+3. Replace the existing file in your installation directory
+4. Restart MobaXterm
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running quickly with the essentials
+  </Card>
+  <Card title="Building from source" icon="code" href="/building/windows">
+    Advanced users can build the integration themselves
+  </Card>
+</CardGroup>

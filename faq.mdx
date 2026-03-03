@@ -1,0 +1,276 @@
+---
+title: FAQ
+description: Frequently asked questions about MobaXterm Discord RPC
+---
+
+Find answers to common questions about installing, using, and troubleshooting MobaXterm Discord RPC integration.
+
+## Installation
+
+<AccordionGroup>
+  <Accordion title="Where do I find my MobaXterm installation directory?">
+    The default installation directory is:
+    
+    ```
+    C:\Program Files (x86)\Mobatek\MobaXterm
+    ```
+    
+    If you installed MobaXterm in a custom location, check your installation settings or search for `MobaXterm.exe` on your system.
+  </Accordion>
+
+  <Accordion title="Do I need administrator privileges to install?">
+    Yes, you need administrator privileges for two reasons:
+    
+    1. **Modifying Program Files**: The default MobaXterm installation directory requires admin access
+    2. **Running MobaXterm**: Administrator privileges ensure the Discord RPC functionality works correctly
+    
+    Right-click on MobaXterm and select "Run as administrator" after installation.
+  </Accordion>
+
+  <Accordion title="Which files do I need to download?">
+    You need three files from the [releases page](https://github.com/poloputoamo/mobaxterm-discord-rpc/releases):
+    
+    1. **MobaXterm.exe** - Modified executable (choose `mobaxterm-complete` or `mobaxterm-silence` and rename to `MobaXterm.exe`)
+    2. **final.dll** - Integration DLL
+    3. **discord-rpc.dll** - Discord RPC library (Windows 32-bit version)
+    
+    All three files must be placed in your MobaXterm installation directory.
+  </Accordion>
+
+  <Accordion title="Should I backup my original files?">
+    **Yes, absolutely!** Before replacing any files:
+    
+    1. Create a backup folder (e.g., `MobaXterm_backup`)
+    2. Copy your original `MobaXterm.exe` to the backup folder
+    3. Note your MobaXterm version number
+    
+    This allows you to restore the original installation if anything goes wrong.
+    
+    <Warning>
+    This modification changes original MobaXterm files. Always keep a backup of your working installation.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Version differences
+
+<AccordionGroup>
+  <Accordion title="What's the difference between 'complete' and 'silence' versions?">
+    The two versions offer different levels of activity tracking:
+    
+    ### mobaxterm-complete
+    
+    - Tracks MobaRTE text editor sessions
+    - Tracks terminal sessions (MoTTY)
+    - Detects local bash sessions
+    - Shows detailed activity states in Discord
+    - Updates presence based on what you're doing
+    
+    **Best for**: Users who want detailed Discord presence showing their current activity
+    
+    ### mobaxterm-silence
+    
+    - Shows only basic presence (MobaXterm is open)
+    - No activity tracking
+    - Minimal Discord updates
+    - Lighter on system resources
+    
+    **Best for**: Users who want simple "playing MobaXterm" presence without details
+  </Accordion>
+
+  <Accordion title="Can I switch between versions?">
+    Yes! To switch versions:
+    
+    1. Close MobaXterm completely
+    2. Download the other version from releases
+    3. Rename it to `MobaXterm.exe`
+    4. Replace the existing file in your installation directory
+    5. Restart MobaXterm
+    
+    The `discord-rpc.dll` and `final.dll` files remain the same.
+  </Accordion>
+
+  <Accordion title="Which version should I use?">
+    Choose based on your preferences:
+    
+    **Choose mobaxterm-complete if you:**
+    - Want to show what you're working on
+    - Like detailed Discord presence
+    - Use the text editor and terminals frequently
+    
+    **Choose mobaxterm-silence if you:**
+    - Prefer minimal presence information
+    - Want lower system resource usage
+    - Don't need activity tracking
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Discord RPC is not showing up in my profile">
+    Try these solutions in order:
+    
+    1. **Check Discord settings**
+       - Open Discord Settings → Activity Privacy
+       - Enable "Display current activity as a status message"
+    
+    2. **Verify administrator mode**
+       - Right-click MobaXterm.exe
+       - Select "Run as administrator"
+    
+    3. **Confirm file placement**
+       - Ensure all three files (`MobaXterm.exe`, `discord-rpc.dll`, `final.dll`) are in the same directory
+    
+    4. **Restart both applications**
+       - Close MobaXterm completely
+       - Restart Discord
+       - Launch MobaXterm as administrator
+    
+    5. **Check Discord is running**
+       - The Discord desktop application must be running (web version won't work)
+  </Accordion>
+
+  <Accordion title="MobaXterm won't start after installation">
+    If MobaXterm fails to launch:
+    
+    1. **Restore your backup**
+       - Replace the modified files with your backup copies
+       - Verify MobaXterm starts normally
+    
+    2. **Check file integrity**
+       - Re-download all files from releases
+       - Verify you downloaded the complete release package
+    
+    3. **Check dependencies**
+       - Ensure `discord-rpc.dll` is present
+       - Verify all DLL files are 32-bit Windows versions
+    
+    4. **Run as administrator**
+       - Right-click MobaXterm.exe
+       - Select "Run as administrator"
+  </Accordion>
+
+  <Accordion title="Presence shows but doesn't update activity">
+    This typically happens with `mobaxterm-complete`. Check:
+    
+    1. **Process tracking**
+       - The RPC tracks `MobaRTE.exe`, `MoTTY.exe`, and `bash.exe` processes
+       - Open Task Manager and verify these processes appear when you use the editor or terminal
+    
+    2. **Update interval**
+       - Activity updates every 500ms
+       - Wait a moment after switching activities
+    
+    3. **Consider switching versions**
+       - If tracking isn't working, you can use `mobaxterm-silence` for basic presence
+  </Accordion>
+
+  <Accordion title="Can I use this with the portable version of MobaXterm?">
+    Yes! The installation process is the same:
+    
+    1. Locate your MobaXterm portable folder
+    2. Backup the original `MobaXterm.exe`
+    3. Replace files following the standard installation steps
+    4. Run MobaXterm (administrator privileges recommended)
+  </Accordion>
+</AccordionGroup>
+
+## Building and customization
+
+<AccordionGroup>
+  <Accordion title="How do I build this from source?">
+    ### Windows build (using CFF Explorer)
+    
+    1. Download `discord-rpc.dll` from [discord-rpc releases](https://github.com/discord/discord-rpc/releases) (win32-dynamic\bin)
+    2. Get pre-built DLLs from [GitHub Actions](https://github.com/poloputoamo/mobaxterm-discord-rpc/actions)
+    3. Open original `MobaXterm.exe` in CFF Explorer
+    4. Navigate to **Import Adder**
+    5. Add Module → Select `discord-rpc.dll`
+    6. Export Functions → Import by Name
+    7. Rebuild Import Table
+    8. Save modified executable
+    
+    ### Linux cross-compilation
+    
+    Check the [CI/CD workflow files](https://github.com/poloputoamo/mobaxterm-discord-rpc/tree/main/.github/workflows) for detailed build steps using Debian-based cross-compilation.
+  </Accordion>
+
+  <Accordion title="Can I change the Discord Application ID?">
+    The current implementation uses Application ID `1347921816777392244`. To use your own:
+    
+    1. Create a Discord application at [Discord Developer Portal](https://discord.com/developers/applications)
+    2. Modify the source code:
+       ```cpp
+       Discord_Initialize("YOUR_APP_ID", &handlers, 1, NULL);
+       ```
+    3. Upload your own image assets to the Discord application
+    4. Update image keys in the source code
+    5. Recompile the DLL
+  </Accordion>
+
+  <Accordion title="Can I customize the presence messages?">
+    Yes! Edit the strings in `UpdateDiscordPresence()` function in `complete.cpp`:
+    
+    ```cpp
+    if (currentState.isEditing) {
+        presence.state = "Your custom state";
+        presence.details = "Your custom details";
+        // ...
+    }
+    ```
+    
+    Then recompile the DLL with your changes.
+  </Accordion>
+
+  <Accordion title="What if I need help with advanced modifications?">
+    For advanced customization:
+    
+    - Check the [GitHub repository](https://github.com/poloputoamo/mobaxterm-discord-rpc) for source code
+    - Review `complete.cpp` and `silence.cpp` for implementation details
+    - Consult the [Discord RPC documentation](https://discord.com/developers/docs/topics/rpc)
+    - Study the CI/CD workflow for build configurations
+  </Accordion>
+</AccordionGroup>
+
+## Safety and compatibility
+
+<AccordionGroup>
+  <Accordion title="Is it safe to modify MobaXterm?">
+    This modification adds Discord RPC functionality by:
+    
+    - Adding DLL imports to the executable
+    - Injecting state tracking code
+    - Not modifying core MobaXterm functionality
+    
+    However:
+    - Always backup your original files
+    - Use at your own risk
+    - This is an unofficial modification
+    
+    <Warning>
+    This project is not affiliated with Mobatek. Use it at your own risk and always maintain backups.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Will this work with future MobaXterm updates?">
+    No, this modification is version-specific. When MobaXterm updates:
+    
+    1. The modified executable won't be compatible
+    2. You'll need to wait for an updated release
+    3. Or rebuild the modification yourself with the new version
+    
+    Monitor the [releases page](https://github.com/poloputoamo/mobaxterm-discord-rpc/releases) for compatibility updates.
+  </Accordion>
+
+  <Accordion title="Does this affect MobaXterm's performance?">
+    The impact is minimal:
+    
+    - **mobaxterm-complete**: Adds process checking every 500ms
+    - **mobaxterm-silence**: Minimal overhead (basic presence only)
+    - Discord RPC runs on a separate thread
+    - Typical memory usage: < 5MB additional
+    
+    You should not notice any performance degradation during normal use.
+  </Accordion>
+</AccordionGroup>
