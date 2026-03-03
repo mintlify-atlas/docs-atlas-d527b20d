@@ -1,0 +1,65 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "MobaXterm Discord RPC",
+  "projectDescription": "Add Discord Rich Presence integration to MobaXterm terminal emulator with activity tracking",
+  "theme": "aspen",
+  "primaryColor": "#7289da",
+  "lightColor": "#99aab5",
+  "darkColor": "#2c2f33",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Overview",
+        "pages": [
+          "introduction",
+          "features"
+        ]
+      },
+      {
+        "group": "Getting Started",
+        "pages": [
+          "installation",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Versions",
+        "pages": [
+          "versions/complete",
+          "versions/silence"
+        ]
+      },
+      {
+        "group": "Advanced",
+        "pages": [
+          "building/windows",
+          "building/linux",
+          "building/troubleshooting"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "api/discord-integration",
+          "api/state-tracking",
+          "faq"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Discord Rich Presence integration for MobaXterm",
+    "Two versions: complete activity tracking and silence mode",
+    "Real-time terminal and editor session detection",
+    "Cross-platform build system (Windows/Linux)",
+    "Automatic process state monitoring"
+  ],
+  "publicApiSurface": [
+    "StartDiscordRPC() - Initialize Discord RPC integration",
+    "UpdateMobaState() - Update current MobaXterm state",
+    "UpdateDiscordPresence() - Update Discord Rich Presence",
+    "HandleDiscordReady() - Discord connection ready handler",
+    "IsProcessRunning() - Check if process is active",
+    "bashrun() - Detect local bash sessions"
+  ]
+}
